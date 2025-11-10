@@ -1,0 +1,46 @@
+server:
+  port: 8081
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+  endpoint:
+    health:
+      show-details: always
+  prometheus:
+    metrics:
+      export:
+        enabled: true
+
+# Resilience4j configuration for CB + Retry
+resilience4j:
+  circuitbreaker:
+    instances:
+      backendCb:
+        register-health-indicator: true
+        sliding-window-type: COUNT_BASED
+        sliding-window-size: 10
+        minimum-number-of-calls: 10
+        failure-rate-threshold: 50
+        slow-call-rate-threshold: 50
+        slow-call-duration-threshold: 2s
+        wait-duration-in-open-state: 5s
+        permitted-number-of-calls-in-half-open-state: 2
+        automatic-transition-from-open-to-half-open-enabled: true
+
+  retry:
+    instances:
+      backendRetry:
+        max-attempts: 3            # total tries = 3 (1 initial + 2 retries)
+        wait-duration: 300ms       # base backoff
+        # Exponential backoff + jitter
+        enable-exponential-backoff: true
+        exponential-backoff-multiplier: 2.0
+        enable-randomized-wait: true
+        randomized-wait-factor: 0.5
+        retry-exceptions:
+          - org.springframework.web.client.ResourceAccessException
+          - org.springframework.web.client.HttpServerErrorException
+          - java.net.SocketTimeoutException
